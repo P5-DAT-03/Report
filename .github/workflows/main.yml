@@ -43,16 +43,38 @@ jobs:
         if: steps.targets.outputs.targets != ''
         run: |
           set -e
-          for f in ${{ steps.targets.outputs.targets }}; do
+          mkdir -p build
+
+          # Start with the discovered targets
+          FILES="${{ steps.targets.outputs.targets }}"
+
+          # Ensure main.typ is included even if filters missed it
+          if [ -f "main.typ" ] && ! grep -q -w "main.typ" <<< "$FILES"; then
+            FILES="$FILES main.typ"
+          fi
+
+          for f in $FILES; do
+            # Normalize to .typ files only
+            case "$f" in
+              *.typ) :
+                ;;
+              *) continue ;;
+            esac
+
+            if [ ! -f "$f" ]; then
+              echo "Skipping missing file: $f"
+              continue
+            fi
+
             out="build/${f%.typ}.pdf"
             mkdir -p "$(dirname "$out")"
             echo "Compiling $f -> $out"
             typst compile "$f" "$out"
           done
-
+          
       - name: Upload PDFs
         if: steps.targets.outputs.targets != ''
         uses: actions/upload-artifact@v4
         with:
-          name: typst-pdfs
-          path: build/**/*.pdf
+          name: typst-main-pdf
+          path: build/main.pdf
