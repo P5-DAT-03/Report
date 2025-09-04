@@ -40,7 +40,7 @@
 
 #show: appendix
 
-#include "chapters/99 Appendix/appendix.typ"
+#include "Chapters/99 Appendix/appendix.typ"
 
 #outline(target: heading.where(supplement: [Appendix]), title: [Appendix]) 
 
