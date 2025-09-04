@@ -44,34 +44,40 @@ jobs:
           fi
 
       - name: Compile Typst files
-        if: steps.targets.outputs.targets != ''
         run: |
           set -e
           mkdir -p build
 
-          # Require main.typ to exist
+          # Require and compile main.typ first
           if [ ! -f "main.typ" ]; then
             echo "main.typ not found in repository root"
             exit 1
           fi
-
           echo "Compiling main.typ -> build/main.pdf"
           typst compile main.typ build/main.pdf
 
           FILES="${{ steps.targets.outputs.targets }}"
 
-          # Compile all other .typ files (one per line; handle spaces)
+          # Compile other .typ files (one per line; safe for spaces)
           while IFS= read -r f; do
-            [[ -z "$f" || "$f" != *.typ || "$f" == "main.typ" ]] && continue
-            out="build/${f%.typ}.pdf"
-            mkdir -p "$(dirname "$out")"
-            echo "Compiling $f -> $out"
-            typst compile "$f" "$out"
+            [ -z "$f" ] && continue
+            case "$f" in
+              *.typ)
+                [ "$f" = "main.typ" ] && continue
+                out="build/${f%.typ}.pdf"
+                mkdir -p "$(dirname "$out")"
+                echo "Compiling $f -> $out"
+                typst compile "$f" "$out"
+                ;;
+              *)
+                continue
+                ;;
+            esac
           done <<< "$FILES"
-          
+
       - name: Upload PDF compiled from main.typ
-        if: steps.targets.outputs.targets != ''
         uses: actions/upload-artifact@v4
         with:
           name: typst-main-pdf
           path: build/main.pdf
+          if-no-files-found: error
