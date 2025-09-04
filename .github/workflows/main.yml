@@ -27,52 +27,49 @@ jobs:
         with:
           typst-version: latest
 
-      - name: Find entrypoints
+      - name: Find Typst files
         id: targets
         run: |
           set -e
           mkdir -p build
           mapfile -t FILES < <(git ls-files '*.typ' '**/*.typ' | grep -v '^_' | grep -v '/_')
           if [ ${#FILES[@]} -eq 0 ]; then
-            echo "targets=" >> $GITHUB_OUTPUT
+            echo "targets=" >> "$GITHUB_OUTPUT"
           else
-            printf 'targets=%s\n' "${FILES[*]}" >> $GITHUB_OUTPUT
+            {
+              echo 'targets<<EOF'
+              printf '%s\n' "${FILES[@]}"
+              echo 'EOF'
+            } >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Compile
+      - name: Compile Typst files
         if: steps.targets.outputs.targets != ''
         run: |
           set -e
           mkdir -p build
 
-          # Start with the discovered targets
-          FILES="${{ steps.targets.outputs.targets }}"
-
-          # Ensure main.typ is included even if filters missed it
-          if [ -f "main.typ" ] && ! grep -q -w "main.typ" <<< "$FILES"; then
-            FILES="$FILES main.typ"
+          # Require main.typ to exist
+          if [ ! -f "main.typ" ]; then
+            echo "main.typ not found in repository root"
+            exit 1
           fi
 
-          for f in $FILES; do
-            # Normalize to .typ files only
-            case "$f" in
-              *.typ) :
-                ;;
-              *) continue ;;
-            esac
+          echo "Compiling main.typ -> build/main.pdf"
+          typst compile main.typ build/main.pdf
 
-            if [ ! -f "$f" ]; then
-              echo "Skipping missing file: $f"
-              continue
-            fi
+          FILES="${{ steps.targets.outputs.targets }}"
 
+          # Compile all other .typ files (one per line; handle spaces)
+          while IFS= read -r f; do
+            [[ -z "$f" || "$f" != *.typ || "$f" == "main.typ" ]] && continue
             out="build/${f%.typ}.pdf"
             mkdir -p "$(dirname "$out")"
             echo "Compiling $f -> $out"
             typst compile "$f" "$out"
-          done
+          done <<< "$FILES"
           
-      - name: Upload PDFs
+      - name: Upload PDF compiled from main.typ
         if: steps.targets.outputs.targets != ''
         uses: actions/upload-artifact@v4
         with:
