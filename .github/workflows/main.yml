@@ -1,0 +1,61 @@
+name: Typst build check
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - "**/*.typ"
+      - ".github/workflows/typst-check.yml"
+  push:
+    branches: [ main ]
+    paths:
+      - "**/*.typ"
+      - ".github/workflows/typst-check.yml"
+
+jobs:
+  build:
+    name: Compile Typst files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Typst
+        run: |
+          mkdir -p ~/.local/bin
+          curl -L -o /tmp/typst.tar.xz \
+            https://github.com/typst/typst/releases/latest/download/typst-x86_64-unknown-linux-gnu.tar.xz
+          tar -xf /tmp/typst.tar.xz -C /tmp
+          mv /tmp/typst ~/.local/bin/typst
+          chmod +x ~/.local/bin/typst
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Find entrypoints
+        id: targets
+        run: |
+          set -e
+          mkdir -p build
+          mapfile -t FILES < <(git ls-files '**/*.typ' | grep -v '^_' | grep -v '/_')
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "targets=" >> $GITHUB_OUTPUT
+          else
+            printf 'targets=%s\n' "${FILES[*]}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Compile
+        if: steps.targets.outputs.targets != ''
+        run: |
+          set -e
+          for f in ${{ steps.targets.outputs.targets }}; do
+            out="build/${f%.typ}.pdf"
+            mkdir -p "$(dirname "$out")"
+            echo "Compiling $f -> $out"
+            typst compile "$f" "$out"
+          done
+
+      - name: Upload PDFs
+        if: steps.targets.outputs.targets != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: typst-pdfs
+          path: build/**/*.pdf
