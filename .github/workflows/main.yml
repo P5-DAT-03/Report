@@ -4,11 +4,13 @@ on:
   pull_request:
     branches: [ main ]
     paths:
+      - "*.typ"
       - "**/*.typ"
       - ".github/workflows/typst-check.yml"
   push:
     branches: [ main ]
     paths:
+      - "*.typ"
       - "**/*.typ"
       - ".github/workflows/typst-check.yml"
 
@@ -35,7 +37,7 @@ jobs:
         run: |
           set -e
           mkdir -p build
-          mapfile -t FILES < <(git ls-files '**/*.typ' | grep -v '^_' | grep -v '/_')
+          mapfile -t FILES < <(git ls-files '*.typ' '**/*.typ' | grep -v '^_' | grep -v '/_')
           if [ ${#FILES[@]} -eq 0 ]; then
             echo "targets=" >> $GITHUB_OUTPUT
           else
