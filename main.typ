@@ -5,7 +5,7 @@
     title: "Title of our project",
     theme: "Anvendelse af maskinlæring til at aldersbestemmelse af sår hos slagtesvin",
     project_period: "Fall Semester 2023",
-    project_group: "cs-24-dat-2-01",
+    project_group: "cs-25-dat-5-03",
     participants: (
       (name: "Frederik Vejen Rønne Rasmussen", email: "frasmu23@student.aau.dk"),
       (name: "Jacob Højlund Sumonsen", email: "jsimon23@student.aau.dk"),
